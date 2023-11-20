@@ -1,8 +1,16 @@
 [package]
 name = "cache-rs"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+license = "MIT"
+description = "rust cache tools base on redis"
+homepage = "https://github.com/yscsky/cache-rs"
+documentation = "https://github.com/yscsky/cache-rs"
+repository = "https://github.com/yscsky/cache-rs"
+readme = "README.md"
+keywords = ["cache", "redis"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+redis = { version = "0.23.3", features = ["tokio-comp"] }

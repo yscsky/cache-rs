@@ -3,6 +3,9 @@ use redis::{FromRedisValue, RedisResult, ToRedisArgs};
 pub mod cache;
 pub mod config;
 
+pub use cache::Cache;
+pub use config::RedisConfig;
+
 pub trait ICache {
     fn get<K, V>(&mut self, key: K) -> RedisResult<V>
     where

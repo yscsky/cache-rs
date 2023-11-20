@@ -166,7 +166,7 @@ impl ICache for Cache {
 #[cfg(test)]
 mod tests_cache {
     use super::*;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::thread;
     use std::time::Duration;
 
@@ -239,5 +239,12 @@ mod tests_cache {
         ca.hmset("my_hash", &[("f1", "v11"), ("f2", "v2")]).unwrap();
         let list: Vec<String> = ca.hmget("my_hash", &["f1", "f2"]).unwrap();
         println!("list: {list:?}");
+        let map: HashMap<String, String> = ca.hgetall("my_hash").unwrap();
+        println!("map: {map:?}");
+        println!("f3 exist: {}", ca.hexists("my_hash", "f3").unwrap());
+        ca.hdel("my_hash", &["f2", "f3"]).unwrap();
+        let map: HashMap<String, String> = ca.hgetall("my_hash").unwrap();
+        println!("map: {map:?}");
+        ca.del("my_hash").unwrap();
     }
 }

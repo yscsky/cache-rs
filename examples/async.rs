@@ -1,20 +1,36 @@
-use cache_ru::{Cache, ICache, RedisConfig};
+use cache_ru::{AsyncCache, RedisConfig};
 use redis::{ErrorKind, FromRedisValue, ToRedisArgs, Value};
 
-fn main() {
-    let mut ca = Cache::new(RedisConfig::new("192.168.100.5:6379", 1)).unwrap();
-    ca.hsetall(
-        UserKey,
-        User {
-            id: "123".into(),
-            name: "abc".into(),
-            age: 321,
-        },
-    )
-    .unwrap();
-    let u: User = ca.hgetall(UserKey).unwrap();
-    println!("user: {:?}", u);
-    ca.del(UserKey).unwrap();
+#[tokio::main]
+async fn main() {
+    let ca = AsyncCache::new(RedisConfig::new("192.168.100.5:6379", 1))
+        .await
+        .unwrap();
+    let mut ca1 = ca.clone();
+    let f1 = tokio::spawn(async move {
+        ca1.set("AsyncKey1", "AsyncValue1").await.unwrap();
+        let val: String = ca1.get("AsyncKey1").await.unwrap();
+        println!("val: {val}");
+        ca1.del("AsyncKey1").await.unwrap();
+    });
+    let mut ca2 = ca.clone();
+    let f2 = tokio::spawn(async move {
+        ca2.hsetall(
+            UserKey,
+            User {
+                id: "123".into(),
+                name: "abc".into(),
+                age: 321,
+            },
+        )
+        .await
+        .unwrap();
+        let u: User = ca2.hgetall(UserKey).await.unwrap();
+        println!("user: {:?}", u);
+        ca2.del(UserKey).await.unwrap();
+    });
+
+    let _ = tokio::join!(f1, f2);
 }
 
 struct UserKey;

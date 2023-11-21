@@ -1,16 +1,16 @@
-use redis::{Client, Connection, RedisResult};
+use redis::{Client, Connection, FromRedisValue, RedisResult, ToRedisArgs};
 
 use crate::{config::RedisConfig, ICache};
 
 pub struct Cache {
-    conn: Connection,
+    con: Connection,
 }
 
 impl Cache {
     pub fn new(config: RedisConfig) -> RedisResult<Self> {
         let client = Client::open(config)?;
-        let conn = client.get_connection()?;
-        let ca = Cache { conn };
+        let con = client.get_connection()?;
+        let ca = Cache { con };
         Ok(ca)
     }
 }
@@ -18,148 +18,212 @@ impl Cache {
 impl ICache for Cache {
     fn get<K, V>(&mut self, key: K) -> RedisResult<V>
     where
-        K: redis::ToRedisArgs,
-        V: redis::FromRedisValue,
+        K: ToRedisArgs,
+        V: FromRedisValue,
     {
-        redis::cmd("GET").arg(key).query::<V>(&mut self.conn)
+        redis::cmd("GET").arg(key).query(&mut self.con)
     }
 
     fn set<K, V>(&mut self, key: K, value: V) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        V: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        V: ToRedisArgs,
     {
-        redis::cmd("SET").arg(key).arg(value).query(&mut self.conn)
+        redis::cmd("SET").arg(key).arg(value).query(&mut self.con)
     }
 
     fn del<K>(&mut self, key: K) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
+        K: ToRedisArgs,
     {
-        redis::cmd("DEL").arg(key).query(&mut self.conn)
+        redis::cmd("DEL").arg(key).query(&mut self.con)
     }
+
     fn incr<K>(&mut self, key: K) -> RedisResult<i32>
     where
-        K: redis::ToRedisArgs,
+        K: ToRedisArgs,
     {
-        redis::cmd("INCR").arg(key).query::<i32>(&mut self.conn)
+        redis::cmd("INCR").arg(key).query(&mut self.con)
     }
 
     fn exists<K>(&mut self, key: K) -> RedisResult<bool>
     where
-        K: redis::ToRedisArgs,
+        K: ToRedisArgs,
     {
-        redis::cmd("EXISTS").arg(key).query::<bool>(&mut self.conn)
+        redis::cmd("EXISTS").arg(key).query(&mut self.con)
     }
 
     fn expire<K>(&mut self, key: K, sec: i32) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
+        K: ToRedisArgs,
     {
-        redis::cmd("EXPIRE").arg(key).arg(sec).query(&mut self.conn)
+        redis::cmd("EXPIRE").arg(key).arg(sec).query(&mut self.con)
     }
 
-    fn sadd<K, V>(&mut self, key: K, value: V) -> RedisResult<()>
+    fn sadd<K, V>(&mut self, key: K, value: &[V]) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        V: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        V: ToRedisArgs,
     {
-        redis::cmd("SADD").arg(key).arg(value).query(&mut self.conn)
+        redis::cmd("SADD").arg(key).arg(value).query(&mut self.con)
     }
 
     fn smembers<K, V>(&mut self, key: K) -> RedisResult<Vec<V>>
     where
-        K: redis::ToRedisArgs,
-        V: redis::FromRedisValue,
+        K: ToRedisArgs,
+        V: FromRedisValue,
     {
-        redis::cmd("SMEMBERS").arg(key).query(&mut self.conn)
+        redis::cmd("SMEMBERS").arg(key).query(&mut self.con)
+    }
+
+    fn srem<K, V>(&mut self, key: K, values: &[V]) -> RedisResult<()>
+    where
+        K: ToRedisArgs,
+        V: ToRedisArgs,
+    {
+        redis::cmd("SREM").arg(key).arg(values).query(&mut self.con)
+    }
+
+    fn scard<K>(&mut self, key: K) -> RedisResult<usize>
+    where
+        K: ToRedisArgs,
+    {
+        redis::cmd("SCARD").arg(key).query(&mut self.con)
+    }
+
+    fn sismember<K, V>(&mut self, key: K, value: V) -> RedisResult<bool>
+    where
+        K: ToRedisArgs,
+        V: ToRedisArgs,
+    {
+        redis::cmd("SISMEMBER")
+            .arg(key)
+            .arg(value)
+            .query(&mut self.con)
     }
 
     fn hset<K, F, V>(&mut self, key: K, field: F, value: V) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
-        V: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
+        V: ToRedisArgs,
     {
         redis::cmd("HSET")
             .arg(key)
             .arg(field)
             .arg(value)
-            .query(&mut self.conn)
+            .query(&mut self.con)
     }
 
     fn hget<K, F, V>(&mut self, key: K, field: F) -> RedisResult<V>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
-        V: redis::FromRedisValue,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
+        V: FromRedisValue,
     {
-        redis::cmd("HGET").arg(key).arg(field).query(&mut self.conn)
+        redis::cmd("HGET").arg(key).arg(field).query(&mut self.con)
     }
 
     fn hmset<K, F, V>(&mut self, key: K, values: &[(F, V)]) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
-        V: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
+        V: ToRedisArgs,
     {
         redis::cmd("HMSET")
             .arg(key)
             .arg(values)
-            .query(&mut self.conn)
+            .query(&mut self.con)
     }
 
     fn hmget<K, F, V>(&mut self, key: K, fields: &[F]) -> RedisResult<V>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
-        V: redis::FromRedisValue,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
+        V: FromRedisValue,
     {
         redis::cmd("HMGET")
             .arg(key)
             .arg(fields)
-            .query(&mut self.conn)
+            .query(&mut self.con)
     }
 
     fn hsetall<K, V>(&mut self, key: K, value: V) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        V: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        V: ToRedisArgs,
     {
-        redis::cmd("HMSET")
-            .arg(key)
-            .arg(value)
-            .query(&mut self.conn)
+        redis::cmd("HMSET").arg(key).arg(value).query(&mut self.con)
     }
 
     fn hgetall<K, V>(&mut self, key: K) -> RedisResult<V>
     where
-        K: redis::ToRedisArgs,
-        V: redis::FromRedisValue,
+        K: ToRedisArgs,
+        V: FromRedisValue,
     {
-        redis::cmd("HGETALL").arg(key).query(&mut self.conn)
+        redis::cmd("HGETALL").arg(key).query(&mut self.con)
     }
 
     fn hexists<K, F>(&mut self, key: K, field: F) -> RedisResult<bool>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
     {
         redis::cmd("HEXISTS")
             .arg(key)
             .arg(field)
-            .query::<bool>(&mut self.conn)
+            .query(&mut self.con)
     }
 
     fn hdel<K, F>(&mut self, key: K, fields: &[F]) -> RedisResult<()>
     where
-        K: redis::ToRedisArgs,
-        F: redis::ToRedisArgs,
+        K: ToRedisArgs,
+        F: ToRedisArgs,
     {
-        redis::cmd("HDEL")
+        redis::cmd("HDEL").arg(key).arg(fields).query(&mut self.con)
+    }
+
+    fn zadd<K, S, M>(&mut self, key: K, items: &[(S, M)]) -> RedisResult<()>
+    where
+        K: ToRedisArgs,
+        S: ToRedisArgs,
+        M: ToRedisArgs,
+    {
+        redis::cmd("ZADD").arg(key).arg(items).query(&mut self.con)
+    }
+
+    fn zrange_by_score<K, M, V>(&mut self, key: K, min: M, max: M) -> RedisResult<Vec<V>>
+    where
+        K: ToRedisArgs,
+        M: ToRedisArgs,
+        V: FromRedisValue,
+    {
+        redis::cmd("ZRANGEBYSCORE")
             .arg(key)
-            .arg(fields)
-            .query(&mut self.conn)
+            .arg(min)
+            .arg(max)
+            .query(&mut self.con)
+    }
+
+    fn zrevrange_by_score<K, M, V>(&mut self, key: K, max: M, min: M) -> RedisResult<Vec<V>>
+    where
+        K: ToRedisArgs,
+        M: ToRedisArgs,
+        V: FromRedisValue,
+    {
+        redis::cmd("ZREVRANGEBYSCORE")
+            .arg(key)
+            .arg(max)
+            .arg(min)
+            .query(&mut self.con)
+    }
+
+    fn zrem<K, M>(&mut self, key: K, items: &[M]) -> RedisResult<()>
+    where
+        K: ToRedisArgs,
+        M: ToRedisArgs,
+    {
+        redis::cmd("ZREM").arg(key).arg(items).query(&mut self.con)
     }
 }
 
@@ -223,11 +287,19 @@ mod tests_cache {
     #[test]
     fn test_set() {
         let mut ca = Cache::new(RedisConfig::new(ADDR, DB)).unwrap();
-        ca.sadd("my_set", "abc").unwrap();
-        ca.sadd("my_set", "def").unwrap();
+        ca.sadd("my_set", &["abc", "def"]).unwrap();
+        ca.sadd("my_set", &["abc", "ghi"]).unwrap();
 
         let set: HashSet<String> = HashSet::from_iter(ca.smembers("my_set").unwrap());
         println!("set: {:?}", set);
+
+        let count = ca.scard("my_set").unwrap();
+        assert_eq!(count, set.len());
+
+        assert!(ca.sismember("my_set", "abc").unwrap());
+        ca.srem("my_set", &["abc"]).unwrap();
+        assert!(!ca.sismember("my_set", "abc").unwrap());
+        ca.srem("my_set", &["def", "ghi"]).unwrap();
     }
 
     #[test]
@@ -246,5 +318,18 @@ mod tests_cache {
         let map: HashMap<String, String> = ca.hgetall("my_hash").unwrap();
         println!("map: {map:?}");
         ca.del("my_hash").unwrap();
+    }
+
+    #[test]
+    fn test_sorted() {
+        let mut ca = Cache::new(RedisConfig::new(ADDR, DB)).unwrap();
+        ca.zadd("my_sorted", &[(123, "abc"), (456, "def")]).unwrap();
+        let list: Vec<String> = ca.zrange_by_score("my_sorted", 0, 1000).unwrap();
+        println!("list: {:?}", list);
+        let list: Vec<String> = ca.zrevrange_by_score("my_sorted", 1000, 0).unwrap();
+        println!("list: {:?}", list);
+        ca.zrem("my_sorted", &["abc", "def"]).unwrap();
+        let list: Vec<String> = ca.zrange_by_score("my_sorted", 0, 1000).unwrap();
+        println!("list: {:?}", list);
     }
 }
